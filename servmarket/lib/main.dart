@@ -32,6 +32,10 @@ class FirebaseStatusScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final projectId = Firebase.apps.isEmpty
+        ? 'Firebase non initialisé'
+        : Firebase.app().options.projectId;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('ServMarket'),
@@ -49,7 +53,7 @@ class FirebaseStatusScreen extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              'Projet : ${Firebase.app().options.projectId}',
+              'Projet : $projectId',
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ],
