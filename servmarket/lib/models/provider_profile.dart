@@ -12,6 +12,9 @@ class ProviderProfile {
     this.email,
     this.category,
     this.address,
+    this.lat,
+    this.lng,
+    this.geohash,
     this.isPublished = false,
     this.createdAt,
     this.updatedAt,
@@ -31,6 +34,13 @@ class ProviderProfile {
   final String? email;
   final String? category;
   final String? address;
+  
+  /// Coordonnées GPS pour la géolocalisation.
+  final double? lat;
+  final double? lng;
+  
+  /// Géohash pour la recherche spatiale.
+  final String? geohash;
 
   /// Indique si le prestataire est visible publiquement.
   final bool isPublished;
@@ -53,6 +63,9 @@ class ProviderProfile {
       email: data['email'] as String?,
       category: data['category'] as String?,
       address: data['address'] as String?,
+      lat: (data['lat'] as num?)?.toDouble(),
+      lng: (data['lng'] as num?)?.toDouble(),
+      geohash: data['geohash'] as String?,
       isPublished: (data['isPublished'] as bool?) ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
@@ -68,6 +81,9 @@ class ProviderProfile {
     'email': email,
     'category': category,
     'address': address,
+    'lat': lat,
+    'lng': lng,
+    'geohash': geohash,
     'isPublished': isPublished,
     'createdAt': createdAt ?? FieldValue.serverTimestamp(),
     'updatedAt': FieldValue.serverTimestamp(),
@@ -82,6 +98,9 @@ class ProviderProfile {
     String? email,
     String? category,
     String? address,
+    double? lat,
+    double? lng,
+    String? geohash,
     bool? isPublished,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -95,6 +114,9 @@ class ProviderProfile {
       email: email ?? this.email,
       category: category ?? this.category,
       address: address ?? this.address,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+      geohash: geohash ?? this.geohash,
       isPublished: isPublished ?? this.isPublished,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
