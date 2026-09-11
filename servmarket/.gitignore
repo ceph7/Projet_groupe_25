@@ -43,3 +43,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Firebase secrets (NE JAMAIS commiter ces fichiers)
+# Pour obtenir ces fichiers : chaque membre les récupère depuis la console Firebase
+# (Paramètres du projet > Apps > Android/iOS > Télécharger google-services.json / GoogleService-Info.plist)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Firebase configuration
+firebase.json
+
+# Generated Firebase options
+lib/firebase_options.dart
+
