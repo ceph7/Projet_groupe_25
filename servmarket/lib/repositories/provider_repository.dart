@@ -133,4 +133,61 @@ class ProviderRepository {
             .map((doc) => ProviderProfile.fromSnapshot(doc))
             .toList());
   }
+
+  /// Recherche géospatiale par bornes de géohash.
+  /// Retourne tous les prestataires publiés dans la zone rectangulaire.
+  Future<List<ProviderProfile>> searchByBounds({
+    required double minLat,
+    required double maxLat,
+    required double minLng,
+    required double maxLng,
+    String? category,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection(_collection)
+          .where('isPublished', isEqualTo: true)
+          .where('lat', isGreaterThanOrEqualTo: minLat)
+          .where('lat', isLessThanOrEqualTo: maxLat)
+          .where('lng', isGreaterThanOrEqualTo: minLng)
+          .where('lng', isLessThanOrEqualTo: maxLng);
+
+      if (category != null && category.isNotEmpty) {
+        query = query.where('category', isEqualTo: category);
+      }
+
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => ProviderProfile.fromSnapshot(doc as DocumentSnapshot<Map<String, dynamic>>))
+          .toList();
+    } catch (e) {
+      throw Exception('Erreur lors de la recherche géospatiale: $e');
+    }
+  }
+
+  /// Recherche par géohash (alternative pour Firestore).
+  Future<List<ProviderProfile>> searchByGeohash({
+    required String minGeohash,
+    required String maxGeohash,
+    String? category,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection(_collection)
+          .where('isPublished', isEqualTo: true)
+          .where('geohash', isGreaterThanOrEqualTo: minGeohash)
+          .where('geohash', isLessThanOrEqualTo: maxGeohash);
+
+      if (category != null && category.isNotEmpty) {
+        query = query.where('category', isEqualTo: category);
+      }
+
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => ProviderProfile.fromSnapshot(doc as DocumentSnapshot<Map<String, dynamic>>))
+          .toList();
+    } catch (e) {
+      throw Exception('Erreur lors de la recherche par géohash: $e');
+    }
+  }
 }
