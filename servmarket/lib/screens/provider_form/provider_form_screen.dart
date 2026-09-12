@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +11,7 @@ import '../../models/user_profile.dart';
 import '../../providers/auth_provider.dart';
 import '../../repositories/provider_repository.dart';
 import '../../services/geolocation_service.dart';
+import '../../services/storage_service.dart';
 
 class ProviderFormScreen extends StatefulWidget {
   final ProviderProfile? existingProfile;
@@ -32,6 +35,7 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   String? _photoUrl;
+  File? _localPhotoFile;
   double? _lat;
   double? _lng;
   String? _geohash;
@@ -65,6 +69,7 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
     _addressController.text = profile.address ?? '';
     _isPublished = profile.isPublished;
     _photoUrl = profile.photoUrl;
+    _localPhotoFile = null;
     _lat = profile.lat;
     _lng = profile.lng;
     _geohash = profile.geohash;
@@ -74,13 +79,36 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
     try {
       setState(() => _isLoading = true);
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
-
       final geoService = GeolocationService.instance;
+      
+      // Vérifier et demander la permission via le service
+      final hasPermission = await geoService.hasPermission();
+      if (!hasPermission) {
+        final permission = await geoService.requestPermission();
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Permission de localisation refusée')),
+            );
+          }
+          return;
+        }
+      }
+
+      final position = await geoService.getCurrentPosition();
+
+      if (position == null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Impossible d\'obtenir la position')),
+          );
+        }
+        return;
+      }
+
       final address = await geoService.getAddressFromCoordinates(
         position.latitude,
         position.longitude,
@@ -93,7 +121,8 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
 
       if (mounted) {
         setState(() {
-          _addressController.text = address ?? '';          _lat = position.latitude;
+          _addressController.text = address ?? '';
+          _lat = position.latitude;
           _lng = position.longitude;
           _geohash = geohash;
           _isLoading = false;
@@ -120,10 +149,9 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
       );
 
       if (image != null && mounted) {
-        // Pour l'instant, on utilise le chemin local
-        // TODO: Implémenter l'upload vers Firebase Storage
         setState(() {
-          _photoUrl = image.path;
+          _localPhotoFile = File(image.path);
+          _photoUrl = null; // Réinitialiser l'URL si on sélectionne une nouvelle photo locale
         });
       }
     } catch (e) {
@@ -167,6 +195,30 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
 
     try {
       final repository = ProviderRepository.instance;
+      final storageService = StorageService.instance;
+
+      // Upload de la photo si une nouvelle photo locale est sélectionnée
+      String? finalPhotoUrl = _photoUrl;
+      if (_localPhotoFile != null) {
+        try {
+          final providerId = widget.existingProfile?.id ?? auth.user!.uid;
+          finalPhotoUrl = await storageService.uploadProviderPhoto(
+            providerId: providerId,
+            imageFile: _localPhotoFile!,
+          );
+        } catch (e) {
+          // Si l'upload échoue (ex: bucket Storage non configuré), on continue sans photo
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Erreur upload photo: ${e.toString()}. Le profil sera sauvegardé sans photo.'),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          finalPhotoUrl = _photoUrl; // Garde l'ancienne photo ou null
+        }
+      }
 
       if (widget.existingProfile != null) {
         // Mise à jour
@@ -177,7 +229,7 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
           email: _emailController.text.trim(),
           category: _categoryController.text.trim(),
           address: _addressController.text.trim(),
-          photoUrl: _photoUrl,
+          photoUrl: finalPhotoUrl,
           lat: _lat,
           lng: _lng,
           geohash: _geohash,
@@ -194,7 +246,7 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
           email: _emailController.text.trim(),
           category: _categoryController.text.trim(),
           address: _addressController.text.trim(),
-          photoUrl: _photoUrl,
+          photoUrl: finalPhotoUrl,
           lat: _lat,
           lng: _lng,
           geohash: _geohash,
@@ -349,29 +401,55 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey[400]!),
                   ),
-                  child: _photoUrl != null
+                  child: _localPhotoFile != null
                       ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      _photoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: Icon(Icons.broken_image_rounded, size: 48),
-                        );
-                      },
-                    ),
-                  )
-                      : const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_photo_alternate_rounded, size: 48, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text('Ajouter une photo', style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  ),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            _localPhotoFile!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Icon(Icons.broken_image_rounded, size: 48),
+                              );
+                            },
+                          ),
+                        )
+                      : _photoUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                _photoUrl!,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                                        SizedBox(height: 8),
+                                        Text('Photo non disponible', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
+                          : const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add_photo_alternate_rounded, size: 48, color: Colors.grey),
+                                  SizedBox(height: 8),
+                                  Text('Ajouter une photo', style: TextStyle(color: Colors.grey)),
+                                ],
+                              ),
+                            ),
                 ),
               ),
               const SizedBox(height: 24),

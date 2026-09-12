@@ -49,6 +49,55 @@ class ProviderDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Photo du prestataire
+            if (provider.photoUrl != null && provider.photoUrl!.isNotEmpty) ...[
+              Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    provider.photoUrl!,
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                : null,
+                            color: AppTheme.accentColor,
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.business_rounded,
+                          size: 80,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
             // Header avec nom et catégorie
             Container(
               padding: const EdgeInsets.all(20),

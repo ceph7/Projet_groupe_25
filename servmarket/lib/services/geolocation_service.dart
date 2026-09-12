@@ -10,39 +10,61 @@ class GeolocationService {
 
   /// Vérifie si les permissions de localisation sont accordées.
   Future<bool> hasPermission() async {
-    LocationPermission permission = await Geolocator.checkPermission();
-    return permission == LocationPermission.always || 
-           permission == LocationPermission.whileInUse;
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      return permission == LocationPermission.always ||
+             permission == LocationPermission.whileInUse;
+    } catch (e) {
+      // Ignore errors in production
+      return false;
+    }
   }
 
   /// Demande la permission de localisation.
   Future<LocationPermission> requestPermission() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        // Les services de localisation sont désactivés
+        return LocationPermission.denied;
+      }
+
+      return await Geolocator.requestPermission();
+    } catch (e) {
+      // Ignore errors in production
       return LocationPermission.denied;
     }
-
-    return await Geolocator.requestPermission();
   }
 
   /// Récupère la position actuelle de l'utilisateur.
   /// La position n'est pas persistée, utilisée uniquement localement.
+  /// Retourne null si la permission est refusée ou si les services sont désactivés.
   Future<Position?> getCurrentPosition() async {
     try {
       bool hasPermission = await this.hasPermission();
       if (!hasPermission) {
         LocationPermission permission = await requestPermission();
-        if (permission == LocationPermission.denied || 
+        if (permission == LocationPermission.denied ||
             permission == LocationPermission.deniedForever) {
           return null;
         }
       }
 
+      // Vérifier à nouveau que les services sont activés
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return null;
+      }
+
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
       );
     } catch (e) {
-      throw Exception('Erreur lors de la récupération de la position: $e');
+      // Ignore errors in production
+      return null;
     }
   }
 

@@ -20,6 +20,8 @@ class _ListScreenState extends State<ListScreen> {
   final GeohashService _geohashService = GeohashService.instance;
   final _addressController = TextEditingController();
   bool _locationPermissionAsked = false;
+  bool _dialogShown = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -42,6 +44,9 @@ class _ListScreenState extends State<ListScreen> {
     } else {
       await searchProvider.initialize(useLocation: false);
     }
+    if (mounted) {
+      setState(() => _isInitialized = true);
+    }
   }
 
   Future<void> _requestLocationPermission() async {
@@ -50,7 +55,7 @@ class _ListScreenState extends State<ListScreen> {
     final searchProvider = context.read<SearchProvider>();
     final geoService = searchProvider.geoService;
     final permission = await geoService.requestPermission();
-    if (permission == LocationPermission.always || 
+    if (permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse) {
       await searchProvider.initialize(useLocation: true);
     } else {
@@ -76,21 +81,25 @@ class _ListScreenState extends State<ListScreen> {
     return Consumer<SearchProvider>(
       builder: (context, searchProvider, child) {
         // Show permission dialog on first load if not asked yet
-        if (!_locationPermissionAsked && !searchProvider.useLocation) {
+        if (!_dialogShown && !_locationPermissionAsked && !searchProvider.useLocation && _isInitialized) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            showDialog(
-              context: context,
-              builder: (context) => LocationPermissionDialog(
-                onAllow: () {
-                  Navigator.of(context).pop();
-                  _requestLocationPermission();
-                },
-                onDeny: () {
-                  Navigator.of(context).pop();
-                  searchProvider.initialize(useLocation: false);
-                },
-              ),
-            );
+            if (mounted && !_dialogShown && !_locationPermissionAsked && !searchProvider.useLocation) {
+              setState(() => _dialogShown = true);
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => LocationPermissionDialog(
+                  onAllow: () {
+                    Navigator.of(context).pop();
+                    _requestLocationPermission();
+                  },
+                  onDeny: () {
+                    Navigator.of(context).pop();
+                    searchProvider.initialize(useLocation: false);
+                  },
+                ),
+              );
+            }
           });
         }
 
@@ -469,4 +478,4 @@ class _ProviderCard extends StatelessWidget {
       ),
     );
   }
-}
+}
