@@ -86,4 +86,50 @@ class GeolocationService {
   double calculateDistanceKm(double lat1, double lng1, double lat2, double lng2) {
     return calculateDistance(lat1, lng1, lat2, lng2) / 1000;
   }
+
+  /// Génère un géohash à partir de coordonnées GPS (implémentation simple).
+  String getGeohash(double lat, double lng, {int precision = 9}) {
+    const String base32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+    int idx = 0;
+    int bit = 0;
+    int evenBit = 1;
+    String geohash = '';
+    double latMin = -90.0, latMax = 90.0;
+    double lonMin = -180.0, lonMax = 180.0;
+    
+    while (geohash.length < precision) {
+      if (evenBit == 1) {
+        double lonMid = (lonMin + lonMax) / 2;
+        if (lng > lonMid) {
+          idx = (idx << 1) + 1;
+          lonMin = lonMid;
+        } else {
+          idx = idx << 1;
+          lonMax = lonMid;
+        }
+      } else {
+        double latMid = (latMin + latMax) / 2;
+        if (lat > latMid) {
+          idx = (idx << 1) + 1;
+          latMin = latMid;
+        } else {
+          idx = idx << 1;
+          latMax = latMid;
+        }
+      }
+      evenBit = evenBit == 1 ? 0 : 1;
+      bit++;
+      if (bit == 5) {
+        geohash += base32[idx];
+        bit = 0;
+        idx = 0;
+      }
+    }
+    return geohash;
+  }
+
+  /// Alias pour reverseGeocode pour compatibilité.
+  Future<String?> getAddressFromCoordinates(double lat, double lng) async {
+    return reverseGeocode(lat, lng);
+  }
 }

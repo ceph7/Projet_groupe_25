@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
+import 'providers/search_provider.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
@@ -25,6 +26,7 @@ class ServMarketApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider.instance..init()),
+        ChangeNotifierProvider(create: (_) => SearchProvider.instance),
       ],
       child: const MaterialApp(
         title: 'ServMarket',

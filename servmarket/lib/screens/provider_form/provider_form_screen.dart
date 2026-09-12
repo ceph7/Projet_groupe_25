@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
@@ -6,6 +8,7 @@ import '../../models/provider_profile.dart';
 import '../../models/user_profile.dart';
 import '../../providers/auth_provider.dart';
 import '../../repositories/provider_repository.dart';
+import '../../services/geolocation_service.dart';
 
 class ProviderFormScreen extends StatefulWidget {
   final ProviderProfile? existingProfile;
@@ -24,10 +27,14 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
   final _emailController = TextEditingController();
   final _categoryController = TextEditingController();
   final _addressController = TextEditingController();
-  
+
   bool _isPublished = false;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _photoUrl;
+  double? _lat;
+  double? _lng;
+  String? _geohash;
 
   final List<String> _categories = [
     'Plomberie',
@@ -57,6 +64,75 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
     _categoryController.text = profile.category ?? '';
     _addressController.text = profile.address ?? '';
     _isPublished = profile.isPublished;
+    _photoUrl = profile.photoUrl;
+    _lat = profile.lat;
+    _lng = profile.lng;
+    _geohash = profile.geohash;
+  }
+
+  Future<void> _detectLocation() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      final geoService = GeolocationService.instance;
+      final address = await geoService.getAddressFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      final geohash = geoService.getGeohash(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (mounted) {
+        setState(() {
+          _addressController.text = address ?? '';          _lat = position.latitude;
+          _lng = position.longitude;
+          _geohash = geohash;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur de localisation: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+
+      if (image != null && mounted) {
+        // Pour l'instant, on utilise le chemin local
+        // TODO: Implémenter l'upload vers Firebase Storage
+        setState(() {
+          _photoUrl = image.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la sélection de l\'image: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   @override
@@ -91,7 +167,7 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
 
     try {
       final repository = ProviderRepository.instance;
-      
+
       if (widget.existingProfile != null) {
         // Mise à jour
         final updatedProfile = widget.existingProfile!.copyWith(
@@ -101,6 +177,10 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
           email: _emailController.text.trim(),
           category: _categoryController.text.trim(),
           address: _addressController.text.trim(),
+          photoUrl: _photoUrl,
+          lat: _lat,
+          lng: _lng,
+          geohash: _geohash,
           isPublished: _isPublished,
         );
         await repository.updateProfile(updatedProfile);
@@ -114,6 +194,10 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
           email: _emailController.text.trim(),
           category: _categoryController.text.trim(),
           address: _addressController.text.trim(),
+          photoUrl: _photoUrl,
+          lat: _lat,
+          lng: _lng,
+          geohash: _geohash,
           isPublished: _isPublished,
         );
         await repository.create(newProfile);
@@ -215,7 +299,6 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _categoryController.text.isEmpty ? null : _categoryController.text,
                 decoration: const InputDecoration(
                   labelText: 'Catégorie',
                   prefixIcon: Icon(Icons.category_rounded),
@@ -239,9 +322,14 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Adresse',
-                  prefixIcon: Icon(Icons.location_on_rounded),
+                  prefixIcon: const Icon(Icons.location_on_rounded),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.my_location_rounded),
+                    onPressed: _detectLocation,
+                    tooltip: 'Utiliser ma position actuelle',
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -249,6 +337,42 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              // Photo upload
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[400]!),
+                  ),
+                  child: _photoUrl != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      _photoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Icon(Icons.broken_image_rounded, size: 48),
+                        );
+                      },
+                    ),
+                  )
+                      : const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_photo_alternate_rounded, size: 48, color: Colors.grey),
+                        SizedBox(height: 8),
+                        Text('Ajouter une photo', style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               SwitchListTile(
@@ -258,7 +382,8 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
                 onChanged: (value) {
                   setState(() => _isPublished = value);
                 },
-                activeColor: AppTheme.accentColor,
+                activeTrackColor: AppTheme.accentColor.withValues(alpha: 0.5),
+                activeThumbColor: AppTheme.accentColor,
               ),
               const SizedBox(height: 24),
               if (_errorMessage != null) ...[
@@ -283,13 +408,13 @@ class _ProviderFormScreenState extends State<ProviderFormScreen> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
                     : Text(isEditing ? 'Mettre à jour' : 'Créer mon profil'),
               ),
             ],

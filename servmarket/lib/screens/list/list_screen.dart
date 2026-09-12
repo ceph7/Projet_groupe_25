@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
+
 import '../../core/theme.dart';
 import '../../models/provider_profile.dart';
-import '../../repositories/provider_repository.dart';
-import '../../services/geolocation_service.dart';
+import '../../providers/search_provider.dart';
 import '../../services/geohash_service.dart';
 import '../../widgets/location_permission_dialog.dart';
 import '../provider_detail/provider_detail_screen.dart';
@@ -16,37 +17,9 @@ class ListScreen extends StatefulWidget {
 }
 
 class _ListScreenState extends State<ListScreen> {
-  final ProviderRepository _repository = ProviderRepository.instance;
-  final GeolocationService _geoService = GeolocationService.instance;
   final GeohashService _geohashService = GeohashService.instance;
-  
-  List<ProviderProfile> _providers = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-  String? _selectedCategory;
-  
-  // Geolocation
-  Position? _currentPosition;
-  bool _locationPermissionAsked = false;
-  bool _useLocation = false;
-  double _searchRadiusKm = 5.0; // Default 5km
-  
-  // Manual search
   final _addressController = TextEditingController();
-  bool _isManualSearch = false;
-
-  final List<String> _categories = [
-    'Toutes',
-    'Plomberie',
-    'Électricité',
-    'Menuiserie',
-    'Peinture',
-    'Jardinage',
-    'Nettoyage',
-    'Coiffure',
-    'Réparation',
-    'Autre',
-  ];
+  bool _locationPermissionAsked = false;
 
   @override
   void initState() {
@@ -61,274 +34,112 @@ class _ListScreenState extends State<ListScreen> {
   }
 
   Future<void> _checkLocationPermission() async {
-    final hasPermission = await _geoService.hasPermission();
+    final searchProvider = context.read<SearchProvider>();
+    final geoService = searchProvider.geoService;
+    final hasPermission = await geoService.hasPermission();
     if (hasPermission) {
-      _useLocation = true;
-      _loadProvidersWithLocation();
+      await searchProvider.initialize(useLocation: true);
     } else {
-      _loadProviders();
+      await searchProvider.initialize(useLocation: false);
     }
   }
 
   Future<void> _requestLocationPermission() async {
     setState(() => _locationPermissionAsked = true);
     
-    final permission = await _geoService.requestPermission();
+    final searchProvider = context.read<SearchProvider>();
+    final geoService = searchProvider.geoService;
+    final permission = await geoService.requestPermission();
     if (permission == LocationPermission.always || 
         permission == LocationPermission.whileInUse) {
-      setState(() => _useLocation = true);
-      _loadProvidersWithLocation();
+      await searchProvider.initialize(useLocation: true);
     } else {
-      setState(() => _useLocation = false);
-      _loadProviders();
-    }
-  }
-
-  Future<void> _loadProvidersWithLocation() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final position = await _geoService.getCurrentPosition();
-      if (position == null) {
-        _loadProviders();
-        return;
-      }
-
-      setState(() => _currentPosition = position);
-
-      final bounds = _geohashService.calculateBounds(
-        position.latitude,
-        position.longitude,
-        _searchRadiusKm,
-      );
-
-      List<ProviderProfile> providers;
-      if (_selectedCategory == null || _selectedCategory == 'Toutes') {
-        providers = await _repository.searchByBounds(
-          minLat: double.parse(bounds['minLat']!),
-          maxLat: double.parse(bounds['maxLat']!),
-          minLng: double.parse(bounds['minLng']!),
-          maxLng: double.parse(bounds['maxLng']!),
-        );
-      } else {
-        providers = await _repository.searchByBounds(
-          minLat: double.parse(bounds['minLat']!),
-          maxLat: double.parse(bounds['maxLat']!),
-          minLng: double.parse(bounds['minLng']!),
-          maxLng: double.parse(bounds['maxLng']!),
-          category: _selectedCategory,
-        );
-      }
-
-      // Filtrer par distance réelle (Haversine)
-      final filteredProviders = _geohashService.filterByDistance(
-        providers,
-        position.latitude,
-        position.longitude,
-        _searchRadiusKm,
-        (provider) => provider.lat ?? 0,
-        (provider) => provider.lng ?? 0,
-      );
-
-      if (mounted) {
-        setState(() {
-          _providers = filteredProviders;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadProviders() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      List<ProviderProfile> providers;
-      if (_selectedCategory == null || _selectedCategory == 'Toutes') {
-        providers = await _repository.getPublished();
-      } else {
-        providers = await _repository.getByCategory(_selectedCategory!);
-      }
-      
-      if (mounted) {
-        setState(() {
-          _providers = providers;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
-          _isLoading = false;
-        });
-      }
+      await searchProvider.initialize(useLocation: false);
     }
   }
 
   Future<void> _searchByAddress() async {
     final address = _addressController.text.trim();
     if (address.isEmpty) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final coords = await _geoService.geocodeAddress(address);
-      if (coords == null) {
-        setState(() {
-          _errorMessage = 'Adresse non trouvée';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final bounds = _geohashService.calculateBounds(
-        coords.latitude,
-        coords.longitude,
-        _searchRadiusKm,
-      );
-
-      List<ProviderProfile> providers;
-      if (_selectedCategory == null || _selectedCategory == 'Toutes') {
-        providers = await _repository.searchByBounds(
-          minLat: double.parse(bounds['minLat']!),
-          maxLat: double.parse(bounds['maxLat']!),
-          minLng: double.parse(bounds['minLng']!),
-          maxLng: double.parse(bounds['maxLng']!),
-        );
-      } else {
-        providers = await _repository.searchByBounds(
-          minLat: double.parse(bounds['minLat']!),
-          maxLat: double.parse(bounds['maxLat']!),
-          minLng: double.parse(bounds['minLng']!),
-          maxLng: double.parse(bounds['maxLng']!),
-          category: _selectedCategory,
-        );
-      }
-
-      final filteredProviders = _geohashService.filterByDistance(
-        providers,
-        coords.latitude,
-        coords.longitude,
-        _searchRadiusKm,
-        (provider) => provider.lat ?? 0,
-        (provider) => provider.lng ?? 0,
-      );
-
-      if (mounted) {
-        setState(() {
-          _providers = filteredProviders;
-          _isManualSearch = true;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
-          _isLoading = false;
-        });
-      }
-    }
+    
+    final searchProvider = context.read<SearchProvider>();
+    await searchProvider.searchByAddress(address);
   }
 
   void _onCategoryTap(String category) {
-    setState(() {
-      _selectedCategory = category == 'Toutes' ? null : category;
-    });
-    if (_useLocation && _currentPosition != null) {
-      _loadProvidersWithLocation();
-    } else {
-      _loadProviders();
-    }
+    final searchProvider = context.read<SearchProvider>();
+    searchProvider.setCategory(category);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show permission dialog on first load if not asked yet
-    if (!_locationPermissionAsked && !_useLocation) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showDialog(
-          context: context,
-          builder: (context) => LocationPermissionDialog(
-            onAllow: () {
-              Navigator.of(context).pop();
-              _requestLocationPermission();
-            },
-            onDeny: () {
-              Navigator.of(context).pop();
-              _loadProviders();
-            },
+    return Consumer<SearchProvider>(
+      builder: (context, searchProvider, child) {
+        // Show permission dialog on first load if not asked yet
+        if (!_locationPermissionAsked && !searchProvider.useLocation) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            showDialog(
+              context: context,
+              builder: (context) => LocationPermissionDialog(
+                onAllow: () {
+                  Navigator.of(context).pop();
+                  _requestLocationPermission();
+                },
+                onDeny: () {
+                  Navigator.of(context).pop();
+                  searchProvider.initialize(useLocation: false);
+                },
+              ),
+            );
+          });
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Prestataires'),
+            backgroundColor: Colors.white,
+            foregroundColor: AppTheme.primaryColor,
+            elevation: 0,
+            actions: [
+              if (searchProvider.useLocation)
+                IconButton(
+                  icon: const Icon(Icons.my_location_rounded),
+                  onPressed: () => searchProvider.loadWithLocation(),
+                  tooltip: 'Ma position',
+                ),
+              IconButton(
+                icon: Icon(searchProvider.isManualSearch ? Icons.list_rounded : Icons.search_rounded),
+                onPressed: () {
+                  searchProvider.toggleManualSearch(!searchProvider.isManualSearch);
+                  if (!searchProvider.isManualSearch) {
+                    _addressController.clear();
+                  }
+                },
+                tooltip: searchProvider.isManualSearch ? 'Liste' : 'Recherche par adresse',
+              ),
+            ],
+          ),
+          body: Column(
+            children: [
+              // Search bar (manual search mode)
+              if (searchProvider.isManualSearch) _buildAddressSearch(searchProvider),
+              // Radius slider (location mode)
+              if (searchProvider.useLocation && !searchProvider.isManualSearch) _buildRadiusSlider(searchProvider),
+              // Filtre par catégorie
+              _buildCategoryFilter(searchProvider),
+              const Divider(height: 1),
+              // Liste des prestataires
+              Expanded(
+                child: _buildProviderList(searchProvider),
+              ),
+            ],
           ),
         );
-      });
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Prestataires'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppTheme.primaryColor,
-        elevation: 0,
-        actions: [
-          if (_useLocation)
-            IconButton(
-              icon: const Icon(Icons.my_location_rounded),
-              onPressed: _loadProvidersWithLocation,
-              tooltip: 'Ma position',
-            ),
-          IconButton(
-            icon: Icon(_isManualSearch ? Icons.list_rounded : Icons.search_rounded),
-            onPressed: () {
-              setState(() => _isManualSearch = !_isManualSearch);
-              if (!_isManualSearch) {
-                _addressController.clear();
-                if (_useLocation && _currentPosition != null) {
-                  _loadProvidersWithLocation();
-                } else {
-                  _loadProviders();
-                }
-              }
-            },
-            tooltip: _isManualSearch ? 'Liste' : 'Recherche par adresse',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search bar (manual search mode)
-          if (_isManualSearch) _buildAddressSearch(),
-          // Radius slider (location mode)
-          if (_useLocation && !_isManualSearch) _buildRadiusSlider(),
-          // Filtre par catégorie
-          _buildCategoryFilter(),
-          const Divider(height: 1),
-          // Liste des prestataires
-          Expanded(
-            child: _buildProviderList(),
-          ),
-        ],
-      ),
+      },
     );
   }
 
-  Widget _buildAddressSearch() {
+  Widget _buildAddressSearch(SearchProvider searchProvider) {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.grey[50],
@@ -371,7 +182,7 @@ class _ListScreenState extends State<ListScreen> {
     );
   }
 
-  Widget _buildRadiusSlider() {
+  Widget _buildRadiusSlider(SearchProvider searchProvider) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       color: Colors.grey[50],
@@ -389,7 +200,7 @@ class _ListScreenState extends State<ListScreen> {
                 ),
               ),
               Text(
-                '${_searchRadiusKm.toStringAsFixed(1)} km',
+                '${searchProvider.searchRadiusKm.toStringAsFixed(1)} km',
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   color: AppTheme.accentColor,
@@ -399,18 +210,13 @@ class _ListScreenState extends State<ListScreen> {
           ),
           const SizedBox(height: 8),
           Slider(
-            value: _searchRadiusKm,
+            value: searchProvider.searchRadiusKm,
             min: 1.0,
             max: 50.0,
             divisions: 49,
             activeColor: AppTheme.accentColor,
             onChanged: (value) {
-              setState(() => _searchRadiusKm = value);
-            },
-            onChangeEnd: (_) {
-              if (_currentPosition != null) {
-                _loadProvidersWithLocation();
-              }
+              searchProvider.setSearchRadius(value);
             },
           ),
         ],
@@ -418,18 +224,18 @@ class _ListScreenState extends State<ListScreen> {
     );
   }
 
-  Widget _buildCategoryFilter() {
+  Widget _buildCategoryFilter(SearchProvider searchProvider) {
     return Container(
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
+        itemCount: searchProvider.categories.length,
         itemBuilder: (context, index) {
-          final category = _categories[index];
-          final isSelected = _selectedCategory == null
+          final category = searchProvider.categories[index];
+          final isSelected = searchProvider.selectedCategory == null
               ? category == 'Toutes'
-              : category == _selectedCategory;
+              : category == searchProvider.selectedCategory;
           
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -453,12 +259,12 @@ class _ListScreenState extends State<ListScreen> {
     );
   }
 
-  Widget _buildProviderList() {
-    if (_isLoading) {
+  Widget _buildProviderList(SearchProvider searchProvider) {
+    if (searchProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_errorMessage != null) {
+    if (searchProvider.errorMessage != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -472,13 +278,13 @@ class _ListScreenState extends State<ListScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                _errorMessage!,
+                searchProvider.errorMessage!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppTheme.errorColor),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _loadProviders,
+                onPressed: () => searchProvider.loadProviders(),
                 child: const Text('Réessayer'),
               ),
             ],
@@ -487,7 +293,7 @@ class _ListScreenState extends State<ListScreen> {
       );
     }
 
-    if (_providers.isEmpty) {
+    if (searchProvider.providers.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -510,7 +316,7 @@ class _ListScreenState extends State<ListScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _selectedCategory != null
+                searchProvider.selectedCategory != null
                     ? 'Essayez une autre catégorie'
                     : 'Revenez plus tard',
                 style: TextStyle(
@@ -526,13 +332,13 @@ class _ListScreenState extends State<ListScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _providers.length,
+      itemCount: searchProvider.providers.length,
       itemBuilder: (context, index) {
-        final provider = _providers[index];
+        final provider = searchProvider.providers[index];
         return _ProviderCard(
           provider: provider,
-          distance: _currentPosition != null && provider.lat != null && provider.lng != null
-              ? _geohashService.calculateDistanceKm(_currentPosition!.latitude, _currentPosition!.longitude, provider.lat!, provider.lng!)
+          distance: searchProvider.currentPosition != null && provider.lat != null && provider.lng != null
+              ? _geohashService.calculateDistanceKm(searchProvider.currentPosition!.latitude, searchProvider.currentPosition!.longitude, provider.lat!, provider.lng!)
               : null,
           onTap: () {
             Navigator.of(context).push(

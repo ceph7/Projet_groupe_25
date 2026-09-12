@@ -15,6 +15,7 @@ class ProviderProfile {
     this.lat,
     this.lng,
     this.geohash,
+    this.photoUrl,
     this.isPublished = false,
     this.createdAt,
     this.updatedAt,
@@ -42,6 +43,9 @@ class ProviderProfile {
   /// Géohash pour la recherche spatiale.
   final String? geohash;
 
+  /// URL de la photo du prestataire.
+  final String? photoUrl;
+
   /// Indique si le prestataire est visible publiquement.
   final bool isPublished;
 
@@ -66,6 +70,7 @@ class ProviderProfile {
       lat: (data['lat'] as num?)?.toDouble(),
       lng: (data['lng'] as num?)?.toDouble(),
       geohash: data['geohash'] as String?,
+      photoUrl: data['photoUrl'] as String?,
       isPublished: (data['isPublished'] as bool?) ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
@@ -84,6 +89,7 @@ class ProviderProfile {
     'lat': lat,
     'lng': lng,
     'geohash': geohash,
+    'photoUrl': photoUrl,
     'isPublished': isPublished,
     'createdAt': createdAt ?? FieldValue.serverTimestamp(),
     'updatedAt': FieldValue.serverTimestamp(),
@@ -101,6 +107,7 @@ class ProviderProfile {
     double? lat,
     double? lng,
     String? geohash,
+    String? photoUrl,
     bool? isPublished,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -117,6 +124,7 @@ class ProviderProfile {
       lat: lat ?? this.lat,
       lng: lng ?? this.lng,
       geohash: geohash ?? this.geohash,
+      photoUrl: photoUrl ?? this.photoUrl,
       isPublished: isPublished ?? this.isPublished,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

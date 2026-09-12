@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
 import '../../models/provider_profile.dart';
-import '../../repositories/provider_repository.dart';
+import '../../providers/search_provider.dart';
 import '../provider_detail/provider_detail_screen.dart';
 
 class MapScreen extends StatefulWidget {
@@ -15,71 +16,41 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final ProviderRepository _repository = ProviderRepository.instance;
-  List<ProviderProfile> _providers = [];
-  bool _isLoading = true;
-  String? _errorMessage;
   final MapController _mapController = MapController();
 
   @override
   void initState() {
     super.initState();
-    _loadProviders();
-  }
-
-  Future<void> _loadProviders() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+    // Initialisation différée pour attendre que SearchProvider soit prêt
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final searchProvider = context.read<SearchProvider>();
+      searchProvider.loadProviders();
     });
-
-    try {
-      final providers = await _repository.getPublished();
-      if (mounted) {
-        setState(() {
-          _providers = providers;
-          _isLoading = false;
-        });
-        
-        // Center map on first provider if available
-        if (providers.isNotEmpty && 
-            providers.first.lat != null && 
-            providers.first.lng != null) {
-          _mapController.move(
-            LatLng(providers.first.lat!, providers.first.lng!),
-            13.0,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Carte'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppTheme.primaryColor,
-        elevation: 0,
-      ),
-      body: _buildMap(),
+    return Consumer<SearchProvider>(
+      builder: (context, searchProvider, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Carte'),
+            backgroundColor: Colors.white,
+            foregroundColor: AppTheme.primaryColor,
+            elevation: 0,
+          ),
+          body: _buildMap(searchProvider),
+        );
+      },
     );
   }
 
-  Widget _buildMap() {
-    if (_isLoading) {
+  Widget _buildMap(SearchProvider searchProvider) {
+    if (searchProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_errorMessage != null) {
+    if (searchProvider.errorMessage != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -93,13 +64,13 @@ class _MapScreenState extends State<MapScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                _errorMessage!,
+                searchProvider.errorMessage!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppTheme.errorColor),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _loadProviders,
+                onPressed: () => searchProvider.loadProviders(),
                 child: const Text('Réessayer'),
               ),
             ],
@@ -108,7 +79,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    if (_providers.isEmpty) {
+    if (searchProvider.providers.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -133,7 +104,7 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     // Filter providers with valid coordinates
-    final validProviders = _providers
+    final validProviders = searchProvider.providers
         .where((p) => p.lat != null && p.lng != null)
         .toList();
 

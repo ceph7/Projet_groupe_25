@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-
 import '../../core/theme.dart';
+import '../../models/user_profile.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/search_provider.dart';
 import '../auth/auth_screen.dart';
 import '../list/list_screen.dart';
 import '../map/map_screen.dart';
+import '../provider_home/provider_home_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,6 +28,12 @@ class _HomeScreenState extends State<HomeScreen> {
           return const AuthScreen();
         }
 
+        // Redirection selon le rôle de l'utilisateur
+        if (auth.user?.role == UserRole.provider) {
+          return const ProviderHomeScreen();
+        }
+
+        // Interface pour les utilisateurs (clients)
         final screens = [
           const ListScreen(),
           const MapScreen(),
