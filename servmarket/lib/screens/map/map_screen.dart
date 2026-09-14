@@ -90,7 +90,7 @@ class _MapScreenState extends State<MapScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Carte'),
-            backgroundColor: Colors.white,
+            backgroundColor: AppTheme.backgroundColor,
             foregroundColor: AppTheme.primaryColor,
             elevation: 0,
             actions: [
@@ -119,39 +119,56 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildCategoryFilter(SearchProvider searchProvider) {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: searchProvider.categories.length,
-        itemBuilder: (context, index) {
-          final category = searchProvider.categories[index];
-          final isSelected = searchProvider.selectedCategory == null
-              ? category == 'Toutes'
-              : category == searchProvider.selectedCategory;
-          
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(category),
-              selected: isSelected,
-              onSelected: (_) {
-                searchProvider.setCategory(category);
-              },
-              selectedColor: AppTheme.accentColor.withValues(alpha: 0.2),
-              checkmarkColor: AppTheme.accentColor,
-              labelStyle: TextStyle(
-                color: isSelected ? AppTheme.accentColor : Colors.grey[700],
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-              side: BorderSide(
-                color: isSelected ? AppTheme.accentColor : Colors.grey[300]!,
-              ),
-            ),
-          );
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth > 600;
+        return Container(
+          height: isTablet ? 70 : 60,
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 24 : 16,
+            vertical: isTablet ? 12 : 8,
+          ),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: searchProvider.categories.length,
+            itemBuilder: (context, index) {
+              final category = searchProvider.categories[index];
+              final isSelected = searchProvider.selectedCategory == null
+                  ? category == 'Toutes'
+                  : category == searchProvider.selectedCategory;
+              
+              return Padding(
+                padding: EdgeInsets.only(right: isTablet ? 12 : 8),
+                child: FilterChip(
+                  label: Text(
+                    category,
+                    style: TextStyle(fontSize: isTablet ? 15 : 14),
+                  ),
+                  selected: isSelected,
+                  onSelected: (_) {
+                    searchProvider.setCategory(category);
+                  },
+                  selectedColor: AppTheme.accentColor.withValues(alpha: 0.2),
+                  checkmarkColor: AppTheme.accentColor,
+                  labelStyle: TextStyle(
+                    color: isSelected ? AppTheme.accentColor : AppTheme.textSecondary,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontSize: isTablet ? 15 : 14,
+                  ),
+                  side: BorderSide(
+                    color: isSelected ? AppTheme.accentColor : AppTheme.borderSubtle,
+                    width: isTablet ? 1.5 : 1,
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 16 : 12,
+                    vertical: isTablet ? 12 : 8,
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -283,11 +300,11 @@ class _MapScreenState extends State<MapScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.surfaceColor,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -299,7 +316,7 @@ class _MapScreenState extends State<MapScreen> {
                   Icon(
                     Icons.location_off_rounded,
                     size: 32,
-                    color: Colors.grey[600],
+                    color: AppTheme.textMuted,
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -307,7 +324,7 @@ class _MapScreenState extends State<MapScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[700],
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -316,7 +333,7 @@ class _MapScreenState extends State<MapScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: AppTheme.textMuted,
                     ),
                   ),
                 ],

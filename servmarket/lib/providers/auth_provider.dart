@@ -18,6 +18,7 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
 
   UserProfile? get user => _user;
+  UserProfile? get currentUser => _user;
   bool get isAuthenticated => _user != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -93,15 +94,19 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      print('AuthProvider: Tentative de connexion pour $email');
       final profile = await _auth.login(email: email, password: password);
       if (profile != null) {
         _user = profile;
+        print('AuthProvider: Connexion réussie, utilisateur: ${profile.email}');
         return true;
       }
       _errorMessage = 'La connexion a échoué.';
+      print('AuthProvider: Profile est null');
       return false;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      print('AuthProvider: Erreur de connexion: $_errorMessage');
       return false;
     } finally {
       _isLoading = false;

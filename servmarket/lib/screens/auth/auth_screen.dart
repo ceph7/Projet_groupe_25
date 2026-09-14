@@ -47,16 +47,18 @@ class _AuthScreenState extends State<AuthScreen> {
       );
     }
 
-    if (success && mounted) {}
+    if (success && mounted) {
+      // La navigation est gérée automatiquement par Consumer<AuthProvider> dans main.dart
+    }
   }
 
   Widget _buildRoleSelector() {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black, width: 1),
+        color: AppTheme.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
       ),
       child: Row(
         children: [
@@ -94,7 +96,7 @@ class _AuthScreenState extends State<AuthScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: selected ? AppTheme.accentColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(9),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -102,13 +104,13 @@ class _AuthScreenState extends State<AuthScreen> {
             Icon(
               icon,
               size: 20,
-              color: selected ? Colors.white : Colors.black87,
+              color: selected ? Colors.white : AppTheme.textSecondary,
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : Colors.black87,
+                color: selected ? Colors.white : AppTheme.textSecondary,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -132,12 +134,13 @@ class _AuthScreenState extends State<AuthScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: AppTheme.accentLight,
-                    shape: BoxShape.circle,
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.location_pin, size: 44, color: AppTheme.accentColor),
+                  child: const Icon(Icons.location_on_rounded, size: 26, color: AppTheme.accentColor),
                 ),
                 const SizedBox(height: 20),
                 Text(
@@ -158,10 +161,23 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'EMAIL',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(
-                    labelText: 'Email',
+                    hintText: 'nom@exemple.com',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                   keyboardType: TextInputType.emailAddress,
@@ -176,10 +192,23 @@ class _AuthScreenState extends State<AuthScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'MOT DE PASSE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextFormField(
                   controller: _passwordController,
                   decoration: const InputDecoration(
-                    labelText: 'Mot de passe',
+                    hintText: '••••••••',
                     prefixIcon: Icon(Icons.lock_outlined),
                   ),
                   obscureText: true,
@@ -195,17 +224,30 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 if (!_isLogin) ...[
                   const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'NOM (OPTIONNEL)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   TextFormField(
                     controller: _displayNameController,
                     decoration: const InputDecoration(
-                      labelText: 'Nom (optionnel)',
+                      hintText: 'Votre nom',
                       prefixIcon: Icon(Icons.person_outlined),
                     ),
                   ),
                   const SizedBox(height: 16),
                   _buildRoleSelector(),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 Consumer<AuthProvider>(
                   builder: (context, auth, child) {
                     if (auth.isLoading) {
