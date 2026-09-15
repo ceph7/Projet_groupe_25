@@ -1,128 +1,167 @@
-import 'package:firebase_auth/firebase_auth.dart'
-    show FirebaseAuth, FirebaseAuthException, UserCredential, User;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/user_model.dart';
+import '../models/user_profile.dart' as profile;
 
-import '../core/errors.dart';
-import '../models/user_profile.dart';
-
-/// Service d'authentification Firebase (email + mot de passe).
-/// Toute la logique repose sur Firebase Auth, pas de logique maison.
+/// Service centralisant l'authentification Firebase.
+/// Couvre les issues #3 (inscription/connexion), #4 (rôle applicatif),
+/// #5 (messages d'erreur en français), #6 (restauration de session).
 class AuthService {
-  AuthService._();
-  static final AuthService instance = AuthService._();
+  static final AuthService instance = AuthService();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final _firestore = FirebaseFirestore.instance;
+  final CollectionReference _usersRef = FirebaseFirestore.instance.collection(
+    'users',
+  );
 
-  /// Utilisateur Firebase actuellement connecté (null si déconnecté).
+  /// Issue #6 : Restauration de session — permet de savoir si un utilisateur
+  /// est déjà connecté au lancement de l'app (à utiliser dans un StreamBuilder).
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   User? get currentUser => _auth.currentUser;
 
-  /// Vérifie si un compte existe déjà pour cet email (inscription).
-  /// Note: fetchSignInMethodsForEmail a été supprimé dans les versions récentes.
-  /// On tente une création de compte factice pour détecter l'existence.
-  Future<bool> emailAlreadyRegistered(String email) async {
-    try {
-      // Tente de créer un utilisateur temporaire pour vérifier l'existence
-      // Si l'email existe déjà, Firebase renverra 'email-already-in-use'
-      await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: 'TempPass123!',
-      );
-      // Si ça réussit, on supprime l'utilisateur créé (email n'existait pas)
-      await _auth.currentUser?.delete();
-      return false;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        return true;
-      }
-      // Pour les autres erreurs (ex: weak-password, invalid-email), on considère
-      // que l'email n'est pas enregistré (ou invalide).
-      return false;
-    }
-  }
-
-  /// Inscription avec email + mot de passe.
-  /// Crée le compte Firebase Auth puis le profil applicatif dans Firestore.
-  Future<UserProfile?> register({
+  /// Issue #3 : Inscription par email/mot de passe.
+  /// Issue #4 : Enregistre le rôle applicatif (client ou prestataire) dans Firestore.
+  Future<UserModel> signUp({
     required String email,
     required String password,
+    required String displayName,
     required UserRole role,
-    String? displayName,
   }) async {
     try {
-      final UserCredential credential = await _auth
-          .createUserWithEmailAndPassword(email: email, password: password);
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-      final user = credential.user;
-      if (user == null) return null;
-
-      final profile = UserProfile(
-        uid: user.uid,
+      final uid = credential.user!.uid;
+      final userModel = UserModel(
+        uid: uid,
         email: email,
         role: role,
         displayName: displayName,
       );
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .set(profile.toMap());
+      await _usersRef.doc(uid).set(userModel.toFirestore());
 
-      return profile;
+      return userModel;
     } on FirebaseAuthException catch (e) {
-      throw Exception(AppExceptions.fromAuthCode(e.code));
-    } on Exception catch (_) {
-      throw Exception(AppExceptions.fromAuthCode(null));
+      throw AuthException(_translateError(e.code));
     }
   }
 
-  /// Connexion avec email + mot de passe.
-  Future<UserProfile?> login({
+  /// Issue #3 : Connexion par email/mot de passe.
+  Future<UserModel?> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      final UserCredential credential = await _auth
-          .signInWithEmailAndPassword(email: email, password: password);
-
-      final user = credential.user;
-      if (user == null) return null;
-
-      // Récupère le profil applicatif (rôle stocké dans Firestore).
-      final snap = await _firestore.collection('users').doc(user.uid).get();
-      if (snap.exists) {
-        return UserProfile.fromSnapshot(snap);
-      }
-
-      // Fallback : crée un profil par défaut si absent.
-      final profile = UserProfile(
-        uid: user.uid,
+      final credential = await _auth.signInWithEmailAndPassword(
         email: email,
-        role: UserRole.user,
+        password: password,
       );
-      await _firestore.collection('users').doc(user.uid).set(profile.toMap());
-      return profile;
+
+      final doc = await _usersRef.doc(credential.user!.uid).get();
+      if (!doc.exists) return null;
+
+      return UserModel.fromFirestore(doc);
     } on FirebaseAuthException catch (e) {
-      throw Exception(AppExceptions.fromAuthCode(e.code));
-    } on Exception catch (_) {
-      throw Exception(AppExceptions.fromAuthCode(null));
+      throw AuthException(_translateError(e.code));
     }
   }
 
-  /// Déconnexion.
-  Future<void> logout() async {
+  Future<void> signOut() async {
     await _auth.signOut();
   }
 
-  /// Récupère le profil applicatif de l'utilisateur connecté.
-  Future<UserProfile?> getCurrentProfile() async {
+  Future<profile.UserProfile?> getCurrentProfile() async {
+    final user = await getCurrentUserProfile();
+    if (user == null) return null;
+    return _toProfile(user);
+  }
+
+  Future<profile.UserProfile?> register({
+    required String email,
+    required String password,
+    required profile.UserRole role,
+    String? displayName,
+  }) async {
+    final user = await signUp(
+      email: email,
+      password: password,
+      displayName: displayName ?? '',
+      role: role == profile.UserRole.provider
+          ? UserRole.prestataire
+          : UserRole.client,
+    );
+    return _toProfile(user);
+  }
+
+  Future<profile.UserProfile?> login({
+    required String email,
+    required String password,
+  }) async {
+    final user = await signIn(email: email, password: password);
+    return user == null ? null : _toProfile(user);
+  }
+
+  Future<void> logout() => signOut();
+
+  profile.UserProfile _toProfile(UserModel user) {
+    return profile.UserProfile(
+      uid: user.uid,
+      email: user.email,
+      role: user.role == UserRole.prestataire
+          ? profile.UserRole.provider
+          : profile.UserRole.user,
+      displayName: user.displayName,
+    );
+  }
+
+  /// Récupère le profil complet (avec rôle) de l'utilisateur actuellement connecté.
+  Future<UserModel?> getCurrentUserProfile() async {
     final user = _auth.currentUser;
     if (user == null) return null;
 
-    final snap = await _firestore.collection('users').doc(user.uid).get();
-    if (!snap.exists) return null;
-    return UserProfile.fromSnapshot(snap);
+    final doc = await _usersRef.doc(user.uid).get();
+    if (!doc.exists) return null;
+
+    return UserModel.fromFirestore(doc);
   }
+
+  /// Issue #5 : Messages d'erreur en français.
+  /// Traduit les codes d'erreur techniques Firebase en messages compréhensibles.
+  String _translateError(String code) {
+    switch (code) {
+      case 'email-already-in-use':
+        return 'Cette adresse email est déjà utilisée par un autre compte.';
+      case 'invalid-email':
+        return 'L\'adresse email saisie n\'est pas valide.';
+      case 'weak-password':
+        return 'Le mot de passe doit contenir au moins 6 caractères.';
+      case 'user-not-found':
+        return 'Aucun compte n\'est associé à cette adresse email.';
+      case 'wrong-password':
+        return 'Le mot de passe saisi est incorrect.';
+      case 'invalid-credential':
+        return 'Email ou mot de passe incorrect.';
+      case 'user-disabled':
+        return 'Ce compte a été désactivé.';
+      case 'too-many-requests':
+        return 'Trop de tentatives. Veuillez réessayer plus tard.';
+      case 'network-request-failed':
+        return 'Problème de connexion réseau. Vérifiez votre connexion internet.';
+      default:
+        return 'Une erreur est survenue. Veuillez réessayer.';
+    }
+  }
+}
+
+/// Exception personnalisée avec message d'erreur déjà traduit en français.
+class AuthException implements Exception {
+  final String message;
+  AuthException(this.message);
+
+  @override
+  String toString() => message;
 }

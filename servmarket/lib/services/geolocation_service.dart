@@ -8,86 +8,41 @@ class GeolocationService {
   GeolocationService._();
   static final GeolocationService instance = GeolocationService._();
 
-  /// Mode démo pour utiliser des positions simulées
-  static bool demoMode = false;
-
-  /// Position simulée pour la démo (Paris centre)
-  static const LatLng demoPosition = LatLng(48.8566, 2.3522);
-
   /// Vérifie si les permissions de localisation sont accordées.
   Future<bool> hasPermission() async {
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      return permission == LocationPermission.always ||
-             permission == LocationPermission.whileInUse;
-    } catch (e) {
-      // Ignore errors in production
-      return false;
-    }
+    LocationPermission permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always || 
+           permission == LocationPermission.whileInUse;
   }
 
   /// Demande la permission de localisation.
   Future<LocationPermission> requestPermission() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        // Les services de localisation sont désactivés
-        return LocationPermission.denied;
-      }
-
-      return await Geolocator.requestPermission();
-    } catch (e) {
-      // Ignore errors in production
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
       return LocationPermission.denied;
     }
+
+    return await Geolocator.requestPermission();
   }
 
   /// Récupère la position actuelle de l'utilisateur.
   /// La position n'est pas persistée, utilisée uniquement localement.
-  /// Retourne null si la permission est refusée ou si les services sont désactivés.
-  /// En mode démo, retourne une position simulée (Paris centre).
   Future<Position?> getCurrentPosition() async {
-    // Mode démo : retourne position simulée
-    if (demoMode) {
-      return Position(
-        latitude: demoPosition.latitude,
-        longitude: demoPosition.longitude,
-        timestamp: DateTime.now(),
-        accuracy: 10.0,
-        altitude: 0.0,
-        altitudeAccuracy: 0.0,
-        heading: 0.0,
-        headingAccuracy: 0.0,
-        speed: 0.0,
-        speedAccuracy: 0.0,
-      );
-    }
-
     try {
       bool hasPermission = await this.hasPermission();
       if (!hasPermission) {
         LocationPermission permission = await requestPermission();
-        if (permission == LocationPermission.denied ||
+        if (permission == LocationPermission.denied || 
             permission == LocationPermission.deniedForever) {
           return null;
         }
       }
 
-      // Vérifier à nouveau que les services sont activés
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return null;
-      }
-
       return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        ),
+        desiredAccuracy: LocationAccuracy.high,
       );
     } catch (e) {
-      // Ignore errors in production
-      return null;
+      throw Exception('Erreur lors de la récupération de la position: $e');
     }
   }
 

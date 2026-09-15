@@ -1,5 +1,10 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -29,9 +34,12 @@ android {
     }
 }
 
-// AJOUTÉ : Aligne parfaitement la cible JVM de Kotlin sur Java 17
+// Utilise le JDK 21 fourni par Android Studio pour compiler la cible Java 17.
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 flutter {
