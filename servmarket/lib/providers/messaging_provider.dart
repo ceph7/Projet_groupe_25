@@ -85,15 +85,15 @@ class MessagingProvider with ChangeNotifier {
         currentUserId,
         otherUserId,
       );
-      
+
       // Charger les messages
       await loadMessages(conversationId);
-      
+
       _isLoading = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         notifyListeners();
       });
-      
+
       return conversationId;
     } catch (e) {
       _errorMessage = 'Erreur lors de l\'ouverture de la conversation: $e';
@@ -169,12 +169,12 @@ class MessagingProvider with ChangeNotifier {
 
     try {
       await _messagingService.deleteConversation(conversationId);
-      
+
       if (_currentConversation?.id == conversationId) {
         _currentConversation = null;
         _currentMessages = [];
       }
-      
+
       _isLoading = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         notifyListeners();
