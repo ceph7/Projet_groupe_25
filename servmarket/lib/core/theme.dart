@@ -1,29 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Couleurs de marque
-  static const Color primaryColor = Colors.black;
-  static const Color primaryLight = Colors.black;
-  static const Color accentColor = Color(0xFFD9662F); // terre cuite
-  static const Color accentLight = Colors.white;
+  static const Color primaryColor = Color(0xFF1B1710);   // encre chaude, remplace le bleu marine
+  static const Color primaryLight = Color(0xFF2E271C);
+  static const Color accentColor  = Color(0xFFC1440E);   // terracotta brûlé, remplace l'orange
+  static const Color accentLight  = Color(0xFFD97A4A);
 
   // Surfaces
-  static const Color backgroundColor = Colors.white;
-  static const Color surfaceColor = Colors.white;
-  static const Color surfaceMuted = Colors.white;
-  static const Color borderSubtle = Colors.white;
+  static const Color backgroundColor = Colors.white;     // impératif, ne pas changer
+  static const Color surfaceColor    = Colors.white;
+  static const Color surfaceMuted    = Color(0xFFF7F5F1); // gris chaud très clair, pour inputs/sections, jamais pour le fond de Scaffold
+  static const Color borderSubtle    = Color(0xFFE5DFD3); // gris chaud, remplace le slate froid
 
   // Texte
-  static const Color textPrimary = Colors.black;
-  static const Color textSecondary = Colors.black;
+  static const Color textPrimary   = Color(0xFF1B1710);
+  static const Color textSecondary = Color(0xFF6B6355);
+  static const Color textMuted     = Color(0xFF9A9080);
 
-  // États
-  static const Color errorColor = Color(0xFFD1483F);
-  static const Color successColor = Color(0xFF2E8B63);
+  // Palette secondaire pour les catégories (dots/badges dans les listes)
+  static const Color categorySage  = Color(0xFF6B7A4F);
+  static const Color categoryOchre = Color(0xFFB8860B);
+
+  // États (gardés proches du standard pour la reconnaissance universelle)
+  static const Color errorColor   = Color(0xFFC1440E); // aligné sur l'accent pour cohérence de ton
+  static const Color successColor = Color(0xFF4A7A4F);
+  static const Color warningColor = Color(0xFFB8860B);
+
+  static Color categoryColor(String category) {
+    const palette = [accentColor, categorySage, categoryOchre];
+    return palette[category.hashCode.abs() % palette.length];
+  }
 
   static ThemeData get lightTheme {
     final base = ThemeData(
-      useMaterial3: false,
+      useMaterial3: true,
       colorScheme: const ColorScheme.light(
         primary: primaryColor,
         secondary: accentColor,
@@ -33,18 +45,29 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: textPrimary,
         onError: Colors.white,
+        background: backgroundColor,
       ),
     );
 
     final textTheme = base.textTheme.copyWith(
-      headlineMedium: base.textTheme.headlineMedium?.copyWith(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.6,
+      headlineMedium: GoogleFonts.fraunces(
+        fontSize: 24,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.4,
         color: textPrimary,
         height: 1.15,
       ),
-      titleLarge: base.textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.w700,
+      headlineSmall: GoogleFonts.fraunces(
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.5,
+        color: textPrimary,
+        height: 1.2,
+      ),
+      titleLarge: GoogleFonts.fraunces(
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.4,
         color: textPrimary,
       ),
       bodyMedium: base.textTheme.bodyMedium?.copyWith(
@@ -80,10 +103,11 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: Colors.white,
-        elevation: 3,
+        elevation: 2,
         shadowColor: primaryColor.withValues(alpha: 0.08),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: borderSubtle, width: 1),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
@@ -92,17 +116,17 @@ class AppTheme {
           backgroundColor: accentColor,
           foregroundColor: Colors.white,
           disabledBackgroundColor: accentColor.withValues(alpha: 0.4),
-          elevation: 4,
-          shadowColor: accentColor.withValues(alpha: 0.4),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          elevation: 0,
+          shadowColor: accentColor.withValues(alpha: 0.3),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(4),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.3,
           ),
-          splashFactory: InkRipple.splashFactory,
         ).copyWith(
           overlayColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.pressed)) {
@@ -118,22 +142,23 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primaryColor,
-          side: const BorderSide(color: Colors.black, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          side: const BorderSide(color: borderSubtle, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(4),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.3,
           ),
         ).copyWith(
           overlayColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.pressed)) {
-              return Colors.black.withValues(alpha: 0.1);
+              return primaryColor.withValues(alpha: 0.06);
             }
             if (states.contains(WidgetState.hovered)) {
-              return Colors.black.withValues(alpha: 0.05);
+              return primaryColor.withValues(alpha: 0.03);
             }
             return null;
           }),
@@ -160,7 +185,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: surfaceMuted,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -182,20 +207,20 @@ class AppTheme {
           borderSide: const BorderSide(color: errorColor, width: 1.6),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        hintStyle: const TextStyle(color: Colors.grey),
-        labelStyle: const TextStyle(color: Colors.grey),
+        hintStyle: const TextStyle(color: textMuted),
+        labelStyle: const TextStyle(color: textSecondary),
         floatingLabelStyle: const TextStyle(color: accentColor, fontWeight: FontWeight.w600),
-        prefixIconColor: Colors.grey,
-        suffixIconColor: Colors.grey,
+        prefixIconColor: textMuted,
+        suffixIconColor: textMuted,
         focusColor: accentColor,
-        hoverColor: Colors.grey[100],
+        hoverColor: surfaceMuted,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: surfaceMuted,
         selectedColor: accentColor,
         labelStyle: const TextStyle(color: textPrimary, fontWeight: FontWeight.w600, fontSize: 13),
         secondaryLabelStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
-        side: BorderSide.none,
+        side: const BorderSide(color: borderSubtle),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
@@ -203,7 +228,7 @@ class AppTheme {
         backgroundColor: surfaceColor,
         elevation: 0,
         height: 66,
-        indicatorColor: accentLight,
+        indicatorColor: accentLight.withValues(alpha: 0.25),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(

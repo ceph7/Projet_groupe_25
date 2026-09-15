@@ -46,6 +46,8 @@ dependencies:
   flutter_map: ^7.0.2
   image_picker: ^1.1.2
   firebase_storage: ^13.5.0
+  google_fonts: ^6.2.1
+  supabase_flutter: ^2.5.11
 
 
 

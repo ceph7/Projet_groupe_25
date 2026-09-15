@@ -51,7 +51,7 @@ class _ListScreenState extends State<ListScreen> {
 
   Future<void> _requestLocationPermission() async {
     setState(() => _locationPermissionAsked = true);
-    
+
     final searchProvider = context.read<SearchProvider>();
     final geoService = searchProvider.geoService;
     final permission = await geoService.requestPermission();
@@ -66,7 +66,7 @@ class _ListScreenState extends State<ListScreen> {
   Future<void> _searchByAddress() async {
     final address = _addressController.text.trim();
     if (address.isEmpty) return;
-    
+
     final searchProvider = context.read<SearchProvider>();
     await searchProvider.searchByAddress(address);
   }
@@ -106,7 +106,7 @@ class _ListScreenState extends State<ListScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Prestataires'),
-            backgroundColor: Colors.white,
+            backgroundColor: AppTheme.backgroundColor,
             foregroundColor: AppTheme.primaryColor,
             elevation: 0,
             actions: [
@@ -136,7 +136,7 @@ class _ListScreenState extends State<ListScreen> {
               if (searchProvider.useLocation && !searchProvider.isManualSearch) _buildRadiusSlider(searchProvider),
               // Filtre par catégorie
               _buildCategoryFilter(searchProvider),
-              const Divider(height: 1),
+              const Divider(height: 1, color: AppTheme.borderSubtle),
               // Liste des prestataires
               Expanded(
                 child: _buildProviderList(searchProvider),
@@ -149,52 +149,68 @@ class _ListScreenState extends State<ListScreen> {
   }
 
   Widget _buildAddressSearch(SearchProvider searchProvider) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.grey[50],
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _addressController,
-              decoration: InputDecoration(
-                hintText: 'Entrez une ville ou adresse',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _addressController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        onPressed: () {
-                          _addressController.clear();
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth > 600;
+        return Container(
+          padding: EdgeInsets.all(isTablet ? 24 : 16),
+          color: AppTheme.surfaceMuted,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _addressController,
+                  decoration: InputDecoration(
+                    hintText: 'Entrez une ville ou adresse',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _addressController.text.isNotEmpty
+                        ? IconButton(
+                      icon: const Icon(Icons.clear_rounded),
+                      onPressed: () {
+                        _addressController.clear();
+                      },
+                    )
+                        : null,
+                    filled: true,
+                    fillColor: AppTheme.surfaceMuted,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 20 : 16,
+                      vertical: isTablet ? 20 : 16,
+                    ),
+                  ),
+                  onSubmitted: (_) => _searchByAddress(),
                 ),
               ),
-              onSubmitted: (_) => _searchByAddress(),
-            ),
+              SizedBox(width: isTablet ? 16 : 12),
+              ElevatedButton(
+                onPressed: _searchByAddress,
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 24 : 20,
+                    vertical: isTablet ? 20 : 16,
+                  ),
+                ),
+                child: const Icon(Icons.search_rounded),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: _searchByAddress,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            ),
-            child: const Icon(Icons.search_rounded),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildRadiusSlider(SearchProvider searchProvider) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.grey[50],
+      color: AppTheme.surfaceMuted,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -206,6 +222,7 @@ class _ListScreenState extends State<ListScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               Text(
@@ -234,37 +251,55 @@ class _ListScreenState extends State<ListScreen> {
   }
 
   Widget _buildCategoryFilter(SearchProvider searchProvider) {
-    return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: searchProvider.categories.length,
-        itemBuilder: (context, index) {
-          final category = searchProvider.categories[index];
-          final isSelected = searchProvider.selectedCategory == null
-              ? category == 'Toutes'
-              : category == searchProvider.selectedCategory;
-          
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(category),
-              selected: isSelected,
-              onSelected: (_) => _onCategoryTap(category),
-              selectedColor: AppTheme.accentColor.withValues(alpha: 0.2),
-              checkmarkColor: AppTheme.accentColor,
-              labelStyle: TextStyle(
-                color: isSelected ? AppTheme.accentColor : Colors.grey[700],
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-              side: BorderSide(
-                color: isSelected ? AppTheme.accentColor : Colors.grey[300]!,
-              ),
-            ),
-          );
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth > 600;
+        return Container(
+          height: isTablet ? 70 : 60,
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 24 : 16,
+            vertical: isTablet ? 12 : 8,
+          ),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: searchProvider.categories.length,
+            itemBuilder: (context, index) {
+              final category = searchProvider.categories[index];
+              final isSelected = searchProvider.selectedCategory == null
+                  ? category == 'Toutes'
+                  : category == searchProvider.selectedCategory;
+
+              return Padding(
+                padding: EdgeInsets.only(right: isTablet ? 12 : 8),
+                child: FilterChip(
+                  label: Text(
+                    category,
+                    style: TextStyle(fontSize: isTablet ? 15 : 14),
+                  ),
+                  selected: isSelected,
+                  onSelected: (_) => _onCategoryTap(category),
+                  selectedColor: AppTheme.accentColor.withValues(alpha: 0.15),
+                  checkmarkColor: AppTheme.accentColor,
+                  labelStyle: TextStyle(
+                    color: isSelected ? AppTheme.accentColor : AppTheme.textSecondary,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontSize: isTablet ? 15 : 14,
+                  ),
+                  side: BorderSide(
+                    color: isSelected ? AppTheme.accentColor : AppTheme.borderSubtle,
+                    width: isTablet ? 1.5 : 1,
+                  ),
+                  backgroundColor: AppTheme.surfaceColor,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 16 : 12,
+                    vertical: isTablet ? 12 : 8,
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -309,17 +344,17 @@ class _ListScreenState extends State<ListScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.search_off_rounded,
                 size: 48,
-                color: Colors.grey[400],
+                color: AppTheme.textMuted,
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Aucun prestataire trouvé',
                 style: TextStyle(
                   fontSize: 18,
-                  color: Colors.grey[600],
+                  color: AppTheme.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -328,9 +363,9 @@ class _ListScreenState extends State<ListScreen> {
                 searchProvider.selectedCategory != null
                     ? 'Essayez une autre catégorie'
                     : 'Revenez plus tard',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[500],
+                  color: AppTheme.textMuted,
                 ),
               ),
             ],
@@ -339,21 +374,61 @@ class _ListScreenState extends State<ListScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: searchProvider.providers.length,
-      itemBuilder: (context, index) {
-        final provider = searchProvider.providers[index];
-        return _ProviderCard(
-          provider: provider,
-          distance: searchProvider.currentPosition != null && provider.lat != null && provider.lng != null
-              ? _geohashService.calculateDistanceKm(searchProvider.currentPosition!.latitude, searchProvider.currentPosition!.longitude, provider.lat!, provider.lng!)
-              : null,
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ProviderDetailScreen(provider: provider),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth > 600;
+        final crossAxisCount = isTablet ? 2 : 1;
+
+        if (isTablet) {
+          return GridView.builder(
+            padding: EdgeInsets.all(isTablet ? 24 : 16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: 2.5,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: searchProvider.providers.length,
+            itemBuilder: (context, index) {
+              final provider = searchProvider.providers[index];
+              return _ProviderCard(
+                provider: provider,
+                distance: searchProvider.currentPosition != null && provider.lat != null && provider.lng != null
+                    ? _geohashService.calculateDistanceKm(searchProvider.currentPosition!.latitude, searchProvider.currentPosition!.longitude, provider.lat!, provider.lng!)
+                    : null,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ProviderDetailScreen(provider: provider),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        }
+
+        return ListView.separated(
+          padding: EdgeInsets.zero,
+          itemCount: searchProvider.providers.length,
+          separatorBuilder: (context, index) => const Divider(
+            color: AppTheme.borderSubtle,
+            height: 1,
+          ),
+          itemBuilder: (context, index) {
+            final provider = searchProvider.providers[index];
+            return _ProviderCard(
+              provider: provider,
+              distance: searchProvider.currentPosition != null && provider.lat != null && provider.lng != null
+                  ? _geohashService.calculateDistanceKm(searchProvider.currentPosition!.latitude, searchProvider.currentPosition!.longitude, provider.lat!, provider.lng!)
+                  : null,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProviderDetailScreen(provider: provider),
+                  ),
+                );
+              },
             );
           },
         );
@@ -375,105 +450,47 @@ class _ProviderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Avatar/Icon
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: AppTheme.accentColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.business_rounded,
-                  color: AppTheme.accentColor,
-                  size: 32,
-                ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Row(
+          children: [
+            // Colored dot
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: AppTheme.categoryColor(provider.category ?? 'Autre'),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(width: 16),
-              // Informations
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      provider.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryColor,
-                      ),
+            ),
+            const SizedBox(width: 12),
+            // Informations
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    provider.name,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${provider.category ?? 'Autre'}${distance != null ? ' — ${distance!.toStringAsFixed(1)} km' : ''}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textMuted,
                     ),
-                    const SizedBox(height: 4),
-                    if (provider.category != null)
-                      Text(
-                        provider.category!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    if (provider.address != null)
-                      Text(
-                        provider.address!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-              ),
-              // Distance (affichée si localisation activée)
-              if (distance != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.location_on_rounded,
-                        size: 12,
-                        color: AppTheme.accentColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${distance!.toStringAsFixed(1)} km',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.grey[400],
+                ],
               ),
-            ],
-          ),
+            ),
+            const Icon(
+              Icons.arrow_outward_rounded,
+              color: AppTheme.primaryColor,
+              size: 18,
+            ),
+          ],
         ),
       ),
     );

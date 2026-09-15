@@ -5,8 +5,11 @@ import '../../core/theme.dart';
 import '../../models/provider_profile.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/app_logo.dart';
+import '../messaging/conversations_screen.dart';
 import '../provider_form/provider_form_screen.dart';
 import '../provider_detail/provider_detail_screen.dart';
+import '../provider_requests/provider_requests_screen.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -25,11 +28,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         final screens = [
           const ProviderDashboardScreen(),
           const ProviderRequestsScreen(),
+          const ConversationsScreen(),
         ];
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Espace Prestataire'),
+            title: const AppLogo(size: 24),
             actions: [
               IconButton(
                 icon: const Icon(Icons.logout),
@@ -56,6 +60,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                 icon: Icon(Icons.message_rounded),
                 label: 'Demandes',
               ),
+              NavigationDestination(
+                icon: Icon(Icons.chat_rounded),
+                label: 'Messages',
+              ),
             ],
           ),
         );
@@ -79,7 +87,7 @@ class ProviderDashboardScreen extends StatelessWidget {
               children: [
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -91,8 +99,8 @@ class ProviderDashboardScreen extends StatelessWidget {
                         Text(
                           auth.user?.email ?? '',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey,
-                              ),
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -101,22 +109,29 @@ class ProviderDashboardScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 Card(
                   child: ListTile(
-                    leading: Icon(
-                      snapshot.hasData && snapshot.data!.isNotEmpty
-                          ? Icons.edit_rounded
-                          : Icons.add_circle_rounded,
+                    leading: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentColor,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                     title: Text(
                       snapshot.hasData && snapshot.data!.isNotEmpty
                           ? 'Gérer mon profil'
                           : 'Créer mon profil',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
                     subtitle: Text(
                       snapshot.hasData && snapshot.data!.isNotEmpty
                           ? 'Mettre à jour vos informations'
                           : 'Commencer par configurer votre profil',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    trailing: const Icon(Icons.arrow_outward_rounded, color: AppTheme.primaryColor),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -135,10 +150,25 @@ class ProviderDashboardScreen extends StatelessWidget {
                 if (snapshot.hasData && snapshot.data!.isNotEmpty)
                   Card(
                     child: ListTile(
-                      leading: const Icon(Icons.visibility_rounded),
-                      title: const Text('Voir mon profil public'),
-                      subtitle: const Text('Aperçu de ce que voient les clients'),
-                      trailing: const Icon(Icons.chevron_right_rounded),
+                      leading: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: AppTheme.categorySage,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      title: Text(
+                        'Voir mon profil public',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      subtitle: Text(
+                        'Aperçu de ce que voient les clients',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.arrow_outward_rounded, color: AppTheme.primaryColor),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -156,40 +186,6 @@ class ProviderDashboardScreen extends StatelessWidget {
           },
         );
       },
-    );
-  }
-}
-
-class ProviderRequestsScreen extends StatelessWidget {
-  const ProviderRequestsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.inbox_rounded,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Aucune demande pour le moment',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Les demandes des clients apparaîtront ici',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
-          ),
-        ],
-      ),
     );
   }
 }

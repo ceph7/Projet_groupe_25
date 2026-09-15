@@ -5,9 +5,12 @@ import '../../core/theme.dart';
 import '../../models/user_profile.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/search_provider.dart';
+import '../../widgets/app_logo.dart';
 import '../auth/auth_screen.dart';
+import '../client_requests/client_requests_screen.dart';
 import '../list/list_screen.dart';
 import '../map/map_screen.dart';
+import '../messaging/conversations_screen.dart';
 import '../provider_home/provider_home_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -37,11 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
         final screens = [
           const ListScreen(),
           const MapScreen(),
+          const ClientRequestsScreen(),
+          const ConversationsScreen(),
         ];
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('ServMarket'),
+            title: const AppLogo(size: 24),
             actions: [
               IconButton(
                 icon: const Icon(Icons.logout),
@@ -67,6 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
               NavigationDestination(
                 icon: Icon(Icons.map_rounded),
                 label: 'Carte',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.inbox_rounded),
+                label: 'Mes demandes',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.message_rounded),
+                label: 'Messages',
               ),
             ],
           ),

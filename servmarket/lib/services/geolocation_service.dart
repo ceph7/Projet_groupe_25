@@ -8,6 +8,12 @@ class GeolocationService {
   GeolocationService._();
   static final GeolocationService instance = GeolocationService._();
 
+  /// Mode démo pour utiliser des positions simulées
+  static bool demoMode = false;
+
+  /// Position simulée pour la démo (Paris centre)
+  static const LatLng demoPosition = LatLng(48.8566, 2.3522);
+
   /// Vérifie si les permissions de localisation sont accordées.
   Future<bool> hasPermission() async {
     try {
@@ -39,7 +45,24 @@ class GeolocationService {
   /// Récupère la position actuelle de l'utilisateur.
   /// La position n'est pas persistée, utilisée uniquement localement.
   /// Retourne null si la permission est refusée ou si les services sont désactivés.
+  /// En mode démo, retourne une position simulée (Paris centre).
   Future<Position?> getCurrentPosition() async {
+    // Mode démo : retourne position simulée
+    if (demoMode) {
+      return Position(
+        latitude: demoPosition.latitude,
+        longitude: demoPosition.longitude,
+        timestamp: DateTime.now(),
+        accuracy: 10.0,
+        altitude: 0.0,
+        altitudeAccuracy: 0.0,
+        heading: 0.0,
+        headingAccuracy: 0.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+    }
+
     try {
       bool hasPermission = await this.hasPermission();
       if (!hasPermission) {

@@ -6,9 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/search_provider.dart';
+import 'providers/messaging_provider.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/provider_requests/provider_requests_screen.dart';
+import 'screens/list/list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,11 +30,17 @@ class ServMarketApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider.instance..init()),
         ChangeNotifierProvider(create: (_) => SearchProvider.instance),
+        ChangeNotifierProvider(create: (_) => MessagingProvider()),
       ],
-      child: const MaterialApp(
+      child: MaterialApp(
         title: 'ServMarket',
         debugShowCheckedModeBanner: false,
-        home: AppRoot(),
+        home: const AppRoot(),
+        routes: {
+          '/home': (context) => const HomeScreen(),
+          '/provider_requests': (context) => const ProviderRequestsScreen(),
+          '/list': (context) => const ListScreen(),
+        },
       ),
     );
   }
